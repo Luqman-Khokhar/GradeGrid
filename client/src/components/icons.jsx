@@ -43,3 +43,10 @@ export const AlertIcon = ({ className = 'size-4' }) => (
     <path d="M12 8v4m0 4h.01" />
   </svg>
 );
+
+export const DownloadIcon = ({ className = 'size-4' }) => (
+  <svg {...base} className={className}>
+    <path d="M12 4v12m0 0-4-4m4 4 4-4" />
+    <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+  </svg>
+);

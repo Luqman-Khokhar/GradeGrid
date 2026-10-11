@@ -7,7 +7,7 @@ Turn student result card PDFs into a single CSV. Upload many PDFs, choose the co
 | Layer | Tech |
 |-------|------|
 | Client | React 19, Vite, Redux Toolkit, Tailwind CSS v4, vite-plugin-pwa |
-| Server | Node 22, Express 5, Mongoose (MongoDB), Multer, pdf-parse |
+| Server | Node 22, Express 5, Mongoose (MongoDB), Multer, pdfjs-dist |
 | Hosting | Vercel (two projects: `client/` and `server/`), MongoDB Atlas |
 
 ## Structure
@@ -74,13 +74,24 @@ Client: http://localhost:5173 · API: http://localhost:5000/api/health
 | `npm run dev:client` / `dev:server` | one side only |
 | `npm run build` | production build of the client |
 | `npm run lint` | ESLint across the repo |
+| `npm test` | unit tests (Node test runner) in both workspaces |
 
 ## API
 
 | Method | Path | Body | Result |
 |--------|------|------|--------|
 | GET | `/api/health` | — | status + DB state |
-| POST | `/api/results/extract` | multipart `files[]` (PDF) | extracted text per file |
+| POST | `/api/results/extract` | multipart `files[]` (PDF) | labelled fields per file: `[{ key, label, value }]` |
+
+## How extraction works
+
+1. `services/pdfExtractor.js` reads text items with their positions using pdf.js.
+2. `services/textLayout.js` groups items into lines and puts a tab wherever there's a wide horizontal gap.
+3. `services/fieldExtractor.js` detects `Label: value` pairs and subject tables (a header row starting with "Subject"), and flattens table rows into fields like `Mathematics Obtained`.
+
+The client merges fields from all cards into columns, the user picks the ones they want, and the CSV is built in the browser.
+
+Scanned (image-only) PDFs contain no text and are reported as "No details found"; OCR is not supported yet.
 
 ## Deploy (Vercel)
 
