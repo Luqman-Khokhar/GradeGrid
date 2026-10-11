@@ -2,7 +2,7 @@ import { useId, useRef, useState } from 'react';
 import { Button } from '../../components/Button';
 import { UploadIcon } from '../../components/icons';
 import { formatBytes } from '../../utils/format';
-import { MAX_FILE_BYTES } from './fileRules';
+import { ACCEPT, MAX_FILE_BYTES } from './fileRules';
 
 export function FileDropzone({ onFiles, disabled = false }) {
   const inputRef = useRef(null);
@@ -43,20 +43,23 @@ export function FileDropzone({ onFiles, disabled = false }) {
       </span>
       <div className="space-y-1">
         <p className="font-medium">
-          <span className="hidden sm:inline">Drag and drop result card PDFs here, or</span>
-          <span className="sm:hidden">Add result card PDFs</span>
+          <span className="hidden sm:inline">Drag and drop result cards here, or</span>
+          <span className="sm:hidden">Add result cards</span>
         </p>
         <p id={hintId} className="text-sm text-fg-muted">
-          PDF only, up to {formatBytes(MAX_FILE_BYTES)} each. You can select many at once.
+          PDF or screenshot (PNG, JPG), up to {formatBytes(MAX_FILE_BYTES)} each. You can select many at once.
+        </p>
+        <p className="text-xs text-fg-muted">
+          Tip: use the downloaded PDF or a screenshot. Camera photos of a printed card may not read correctly.
         </p>
       </div>
       <Button onClick={() => inputRef.current?.click()} disabled={disabled} aria-describedby={hintId}>
-        Choose PDFs
+        Choose files
       </Button>
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf,.pdf"
+        accept={ACCEPT}
         multiple
         hidden
         onChange={handleChange}

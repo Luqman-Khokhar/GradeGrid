@@ -7,7 +7,9 @@ import { PART_KEYS, reconcile } from './reconcile.js';
  * calibrated on the Gujranwala HSSC marks sheet. Rows are found from OCR'd words;
  * every mark is then re-read from its own cell, because full-page OCR drops digits.
  *
- * Column positions are fractions of the page width (the card fills the page).
+ * Positions are fractions of the calibration page (the PDF card: x of its width, y of its
+ * height). Screenshots are framed differently, so `findFrame` maps any image onto that page
+ * using two labels OCR always reads: "Roll No." and "Registration No.".
  */
 const COLUMNS = [
   { key: 'max', label: 'Max', x: 0.296, kind: 'number' },
@@ -22,9 +24,49 @@ const COLUMNS = [
   { key: 'statusPractical', label: 'Status Practical', x: 0.854, kind: 'status' },
 ];
 const MAX_X = COLUMNS[0].x;
+// Columns whose numbers mark a subject row; several, so one misread number cannot drop a row.
+const ROW_MARKER_X = [COLUMNS[0].x, COLUMNS[4].x, COLUMNS[5].x];
 const SUBJECT_X = [0.075, 0.27];
 const CELL_HEIGHT = 0.023; // fraction of page height
 const DEFAULT_ROW_SPACING = 0.033;
+// Vertical range of the pass/fail banner, measured down from the totals row.
+const BANNER_BELOW_TOTAL = [0.03, 0.15];
+// Where the frame labels sit on the calibration page, and that page's height / width.
+const REFERENCE = { rollX: 0.053, registrationX: 0.503, rollY: 0.246, pageRatio: 2546 / 1800 };
+
+/**
+ * Map between canvas pixels and calibration-page fractions. Uses the "Roll" and "Registration"
+ * label positions for offset and scale (screenshots keep the aspect ratio, so one scale fits both
+ * axes); falls back to the whole canvas when the labels are missing.
+ */
+export const findFrame = (words, width, height) => {
+  const roll = words.find((w) => /^Roll$/i.test(w.text));
+  const registration = words.find((w) => /^Registration$/i.test(w.text) && roll && w.x0 > roll.x1);
+  if (!roll || !registration) {
+    return {
+      toPage: (x, y) => ({ x: x / width, y: y / height }),
+      toPixels: (x, y) => ({ x: x * width, y: y * height }),
+      scaleX: width,
+      scaleY: height,
+    };
+  }
+
+  const scaleX = (registration.x0 - roll.x0) / (REFERENCE.registrationX - REFERENCE.rollX);
+  const scaleY = scaleX * REFERENCE.pageRatio;
+  const rollY = (roll.y0 + roll.y1) / 2;
+  return {
+    toPage: (x, y) => ({
+      x: REFERENCE.rollX + (x - roll.x0) / scaleX,
+      y: REFERENCE.rollY + (y - rollY) / scaleY,
+    }),
+    toPixels: (x, y) => ({
+      x: roll.x0 + (x - REFERENCE.rollX) * scaleX,
+      y: rollY + (y - REFERENCE.rollY) * scaleY,
+    }),
+    scaleX,
+    scaleY,
+  };
+};
 
 const HEADER_PATTERNS = [
   ['Roll No', /Roll\s*No\.?\s*:?\s*(\d{3,})/i],
@@ -83,10 +125,20 @@ const halfWidth = (index) => {
 };
 
 export const parseBiseCard = async ({ canvas, words, text }) => {
-  const W = canvas.width;
-  const H = canvas.height;
-  const cx = (word) => (word.x0 + word.x1) / 2 / W;
-  const cy = (word) => (word.y0 + word.y1) / 2 / H;
+  const frame = findFrame(words, canvas.width, canvas.height);
+  const center = (word) => frame.toPage((word.x0 + word.x1) / 2, (word.y0 + word.y1) / 2);
+  const cx = (word) => center(word).x;
+  const cy = (word) => center(word).y;
+  // Page-fraction rectangle → pixel rectangle on this canvas.
+  const toRect = (x, y, width, height) => {
+    const corner = frame.toPixels(x, y);
+    return {
+      left: Math.round(corner.x),
+      top: Math.round(corner.y),
+      width: Math.round(width * frame.scaleX),
+      height: Math.round(height * frame.scaleY),
+    };
+  };
 
   // Column headings ("Marks Obtained", "Score", "Relative") sit in a band just above the rows.
   const headingYs = words.filter((w) => /^(Obtained|Score|Relative)$/.test(w.text)).map(cy);
@@ -95,16 +147,43 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
   const totalWord = words.find((w) => /Over/i.test(w.text) && cy(w) > tableTop);
   const totalY = totalWord ? cy(totalWord) : 1;
 
-  // Each subject row has a 2-4 digit "max marks" value in the first marks column.
-  const anchors = words
-    .filter((w) => /^\d{2,4}$/.test(w.text) && Math.abs(cx(w) - MAX_X) < 0.03 && cy(w) > tableTop && cy(w) < totalY - 0.01)
-    .sort((a, b) => cy(a) - cy(b))
-    .filter((w, i, list) => i === 0 || cy(w) - cy(list[i - 1]) > 0.01);
+  // The pass/fail banner sits just below the totals row. Screenshots framed differently can
+  // leave it out of the first OCR pass, so read that strip on its own when it is missing.
+  let cardText = text;
+  if (totalWord && !/has\s+passed|\bfail/i.test(text)) {
+    const strip = toRect(0, totalY + BANNER_BELOW_TOTAL[0], 1, BANNER_BELOW_TOTAL[1] - BANNER_BELOW_TOTAL[0]);
+    const top = Math.max(0, strip.top);
+    const bottom = Math.min(canvas.height, strip.top + strip.height);
+    if (bottom > top) {
+      cardText += `\n${(await readText(canvas, { left: 0, top, width: canvas.width, height: bottom - top })).text}`;
+    }
+  }
 
-  if (!anchors.length) return { fields: [], warnings: ['No subject rows found on this result card.'] };
+  // Subject rows carry numbers in the Max, Total and Percentile columns; cluster them by height.
+  const markers = words
+    .filter(
+      (w) =>
+        /^\d{1,4}(\.\d+)?$/.test(w.text) &&
+        ROW_MARKER_X.some((x) => Math.abs(cx(w) - x) < 0.03) &&
+        cy(w) > tableTop &&
+        cy(w) < totalY - 0.01,
+    )
+    .sort((a, b) => cy(a) - cy(b));
+  const rowYs = [];
+  let cluster = [];
+  markers.forEach((w) => {
+    if (cluster.length && cy(w) - cy(cluster[cluster.length - 1]) > 0.01) {
+      rowYs.push(median(cluster.map(cy)));
+      cluster = [];
+    }
+    cluster.push(w);
+  });
+  if (cluster.length) rowYs.push(median(cluster.map(cy)));
 
-  const dx = median(anchors.map(cx)) - MAX_X;
-  const rowYs = anchors.map(cy);
+  if (!rowYs.length) return { fields: [], warnings: ['No subject rows found on this result card.'] };
+
+  const maxWords = markers.filter((w) => Math.abs(cx(w) - MAX_X) < 0.03);
+  const dx = maxWords.length ? median(maxWords.map(cx)) - MAX_X : 0;
   const spacing = rowYs.length > 1 ? median(rowYs.slice(1).map((y, i) => y - rowYs[i])) : DEFAULT_ROW_SPACING;
 
   const rows = rowYs.map((y, i) => {
@@ -112,12 +191,7 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
     const bottom = i < rowYs.length - 1 ? (y + rowYs[i + 1]) / 2 : Math.min(y + spacing / 2, totalY - 0.005);
     return {
       y,
-      subjectRect: {
-        left: Math.round((SUBJECT_X[0] + dx) * W),
-        top: Math.round(top * H),
-        width: Math.round((SUBJECT_X[1] - SUBJECT_X[0]) * W),
-        height: Math.round((bottom - top) * H),
-      },
+      subjectRect: toRect(SUBJECT_X[0] + dx, top, SUBJECT_X[1] - SUBJECT_X[0], bottom - top),
     };
   });
 
@@ -129,12 +203,7 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
 
   const cellAt = (column, index, y) => ({
     kind: column.kind,
-    rect: {
-      left: Math.round((column.x + dx - halfWidth(index)) * W),
-      top: Math.round((y - CELL_HEIGHT / 2) * H),
-      width: Math.round(halfWidth(index) * 2 * W),
-      height: Math.round(CELL_HEIGHT * H),
-    },
+    rect: toRect(column.x + dx - halfWidth(index), y - CELL_HEIGHT / 2, halfWidth(index) * 2, CELL_HEIGHT),
   });
 
   const cells = rows.flatMap((row) => COLUMNS.map((column, index) => cellAt(column, index, row.y)));
@@ -170,7 +239,8 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
     if (value) fields.push({ key: toKey(label), label, value });
   };
 
-  Object.entries(parseHeader(text)).forEach(([label, value]) => {
+  const header = parseHeader(cardText);
+  Object.entries(header).forEach(([label, value]) => {
     if (label !== 'Result') add(label, value);
   });
   checked.forEach((row) => {
@@ -179,7 +249,7 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
   add('Grand Total Max', grand.max);
   add('Grand Total', grand.total);
   add('Overall Grade', grand.grade);
-  add('Result', parseHeader(text).Result);
+  add('Result', header.Result);
 
   // Parts are blank for subjects without that exam; only flag cells that should have a mark.
   const unreadable = checked.flatMap((row) =>
