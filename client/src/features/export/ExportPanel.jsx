@@ -5,17 +5,26 @@ import { Button } from '../../components/Button';
 import { DownloadIcon } from '../../components/icons';
 import { downloadCsv, toCsv } from '../../utils/csv';
 import { ColumnPicker } from './ColumnPicker';
+import { groupColumns } from './columnGroups';
 import { ResultsPreview } from './ResultsPreview';
-import { FILE_COLUMN, selectColumns, selectEmptyResultNames, selectStudentRows } from './exportSelectors';
+import {
+  FILE_COLUMN,
+  selectColumns,
+  selectEmptyResultNames,
+  selectStudentRows,
+  selectWarnedNames,
+} from './exportSelectors';
 
 export function ExportPanel() {
   const rows = useSelector(selectStudentRows);
   const fieldColumns = useSelector(selectColumns);
   const emptyNames = useSelector(selectEmptyResultNames);
+  const warnedNames = useSelector(selectWarnedNames);
   // Track exclusions so columns from newly extracted cards start selected.
   const [excluded, setExcluded] = useState(() => new Set());
 
   const allColumns = useMemo(() => [FILE_COLUMN, ...fieldColumns], [fieldColumns]);
+  const groups = useMemo(() => groupColumns(fieldColumns), [fieldColumns]);
   const selectedKeys = useMemo(
     () => new Set(allColumns.filter((column) => !excluded.has(column.key)).map((column) => column.key)),
     [allColumns, excluded],
@@ -29,6 +38,13 @@ export function ExportPanel() {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      return next;
+    });
+
+  const setMany = (keys, include) =>
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      keys.forEach((key) => (include ? next.delete(key) : next.add(key)));
       return next;
     });
 
@@ -50,7 +66,14 @@ export function ExportPanel() {
 
       {emptyNames.length > 0 && (
         <Alert title={`No details found in ${emptyNames.length} file${emptyNames.length > 1 ? 's' : ''}`}>
-          {emptyNames.join(', ')}. These may be scanned images rather than text PDFs, so they are left out of the CSV.
+          {emptyNames.join(', ')}. The PDF may be blurry or use a layout GradeGrid does not support yet, so it is left out of the CSV.
+        </Alert>
+      )}
+
+      {warnedNames.length > 0 && (
+        <Alert tone="warning" title={`Double-check ${warnedNames.length} card${warnedNames.length > 1 ? 's' : ''}`}>
+          {warnedNames.join(', ')}. Some values were unclear or auto-corrected so the marks add up. Details are listed
+          under each file above.
         </Alert>
       )}
 
@@ -58,9 +81,11 @@ export function ExportPanel() {
         <>
           <ColumnPicker
             columns={allColumns}
+            groups={groups}
             totalRows={rows.length}
             selectedKeys={selectedKeys}
             onToggle={toggle}
+            onSetMany={setMany}
             onSelectAll={() => setExcluded(new Set())}
             onClear={() => setExcluded(new Set(allColumns.map((column) => column.key)))}
           />

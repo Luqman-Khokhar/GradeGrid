@@ -52,6 +52,13 @@ export function SelectedFileList({ items, results, isUploading, onRemove }) {
                 <FileStatus result={result} isUploading={isUploading} />
               </div>
               {result && !result.ok && <p className="mt-1 text-xs text-danger">{result.error}</p>}
+              {result?.ok && result.warnings?.length > 0 && (
+                <ul className="mt-1 space-y-0.5 text-xs text-warning">
+                  {result.warnings.map((warning) => (
+                    <li key={warning}>Check: {warning}</li>
+                  ))}
+                </ul>
+              )}
             </div>
             <Button
               variant="ghost"

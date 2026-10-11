@@ -21,6 +21,12 @@ export const selectEmptyResultNames = createSelector([selectResults], (results) 
     .map((result) => result.fileName),
 );
 
+export const selectWarnedNames = createSelector([selectResults], (results) =>
+  Object.values(results)
+    .filter((result) => result.ok && result.warnings?.length)
+    .map((result) => result.fileName),
+);
+
 /** Every field seen across all cards, in first-seen order, with how many cards have it. */
 export const selectColumns = createSelector([selectResults], (results) => {
   const columns = new Map();

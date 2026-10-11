@@ -3,6 +3,7 @@ import { AlertIcon, CheckIcon } from './icons';
 const TONES = {
   danger: 'border-danger/40 bg-danger/10 text-danger',
   success: 'border-success/40 bg-success/10 text-success',
+  warning: 'border-warning/40 bg-warning/10 text-warning',
 };
 
 export function Alert({ tone = 'danger', title, children, action }) {

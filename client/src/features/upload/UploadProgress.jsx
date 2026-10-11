@@ -6,6 +6,7 @@ export function UploadProgress({ done, total }) {
       <p className="text-sm text-fg-muted" aria-live="polite">
         Processing {done} of {total} files…
       </p>
+      <p className="text-xs text-fg-muted">Scanned result cards take about 10 seconds each to read.</p>
       <div
         role="progressbar"
         aria-label="Extraction progress"

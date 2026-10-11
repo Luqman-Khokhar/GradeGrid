@@ -15,6 +15,7 @@
   --color-fg-muted: #475569;
   --color-danger: #b91c1c;
   --color-success: #15803d;
+  --color-warning: #a16207;
 
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
@@ -30,6 +31,7 @@
     --color-brand-100: #312e81;
     --color-danger: #f87171;
     --color-success: #4ade80;
+    --color-warning: #facc15;
   }
 }
 
