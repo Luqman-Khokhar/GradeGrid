@@ -23,3 +23,6 @@ npm-debug.log*
 
 # local claude settings
 .claude/settings.local.json
+
+# OCR language data (cached in the OS temp dir; never commit)
+*.traineddata

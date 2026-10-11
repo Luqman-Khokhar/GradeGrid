@@ -13,11 +13,13 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@napi-rs/canvas": "0.1.100",
     "cors": "^2.8.6",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
     "mongoose": "^9.11.1",
     "multer": "^2.4.0",
-    "pdfjs-dist": "5.4.296"
+    "pdfjs-dist": "5.4.296",
+    "tesseract.js": "7.0.0"
   }
 }
