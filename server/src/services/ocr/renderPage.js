@@ -1,4 +1,7 @@
 import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { HttpError } from '../../middleware/errorHandler.js';
+import { imageSize } from '../fileSignature.js';
+import { isWithinPixelLimits, UPLOAD_LIMITS } from '../uploadLimits.js';
 
 // About the native resolution of typical result card screenshots; larger is slower, not more accurate.
 const TARGET_WIDTH = 1800;
@@ -30,6 +33,10 @@ const stretchContrast = (canvas) => {
 export const renderPage = async (page) => {
   const base = page.getViewport({ scale: 1 });
   const viewport = page.getViewport({ scale: TARGET_WIDTH / base.width });
+  // A page shaped like a thin strip would render millions of pixels tall at OCR width.
+  if (!isWithinPixelLimits({ width: Math.ceil(viewport.width), height: Math.ceil(viewport.height) })) {
+    throw new HttpError(422, 'This PDF page has an unusual size and cannot be read.');
+  }
   const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
   await page.render({ canvasContext: canvas.getContext('2d'), viewport, canvas }).promise;
   return stretchContrast(canvas);
@@ -86,9 +93,15 @@ const contentBox = (image) => {
 
 /** Load a PNG/JPG/WebP screenshot, trim plain margins, scale to OCR size and stretch contrast. */
 export const prepareImage = async (buffer) => {
+  // Check the size the header claims before decoding: a small file can expand to gigabytes.
+  const size = imageSize(buffer);
+  if (!size || !isWithinPixelLimits(size)) {
+    throw new HttpError(422, 'This image is too large or damaged. Use a normal screenshot of the result card.');
+  }
   const image = await loadImage(buffer);
   const box = contentBox(image);
-  const scale = Math.min(MAX_UPSCALE, TARGET_WIDTH / box.width);
+  // Narrow, tall crops would otherwise upscale past the pixel budget.
+  const scale = Math.min(MAX_UPSCALE, TARGET_WIDTH / box.width, Math.sqrt(UPLOAD_LIMITS.maxPixels / (box.width * box.height)));
   const canvas = createCanvas(Math.round(box.width * scale), Math.round(box.height * scale));
   const context = canvas.getContext('2d');
   context.imageSmoothingEnabled = true;

@@ -47,18 +47,28 @@ Create `server/.env`:
 ```env
 NODE_ENV=development
 PORT=5000
-# Optional. Without it extraction still works; saved selections and rate limiting are off.
+# Optional in development (rate limiting is off without it). Required in production:
+# extraction is refused while the rate limit cannot be checked.
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/gradegrid?retryWrites=true&w=majority
 CLIENT_ORIGINS=http://localhost:5173
 MAX_FILE_SIZE_MB=4
-# PDFs one IP may process per hour (needs MongoDB)
+# Files one client (IPv4 address or IPv6 /64) may process per hour (needs MongoDB)
 RATE_LIMIT_FILES_PER_HOUR=200
+# Files all clients together may process per hour: a ceiling on compute cost
+RATE_LIMIT_GLOBAL_FILES_PER_HOUR=2000
+# Proxy hops in front of the server. 1 is right for Vercel; on other hosts set it to the
+# real chain, or clients can fake their IP with X-Forwarded-For and dodge the rate limit.
+TRUST_PROXY=1
+# Optional Cloudflare Turnstile secret; set together with VITE_TURNSTILE_SITE_KEY on the client
+TURNSTILE_SECRET_KEY=
 ```
 
 Create `client/.env`:
 
 ```env
 VITE_API_URL=http://localhost:5000
+# Optional Cloudflare Turnstile site key (bot check on every upload)
+VITE_TURNSTILE_SITE_KEY=
 ```
 
 Run both apps:
@@ -84,16 +94,30 @@ Client: http://localhost:5173 · API: http://localhost:5000/api/health
 | Method | Path | Body | Result |
 |--------|------|------|--------|
 | GET | `/api/health` | — | status + DB state (`connected` / `unreachable` / `not configured`) |
-| POST | `/api/results/extract` | multipart `files[]` (PDF, PNG, JPG, WebP) | per file: `{ fields: [{ key, label, value }], warnings, source }`; rate limited per IP |
-| GET | `/api/presets` | — | saved column selections |
-| POST | `/api/presets` | `{ name, columns: [key] }` | created selection (409 if the name exists) |
-| DELETE | `/api/presets/:id` | — | soft delete |
+| POST | `/api/results/extract` | multipart `files[]` (PDF, PNG, JPG, WebP), up to 5 | per file: `{ fields: [{ key, label, value }], warnings, source }`; rate limited per client and globally |
+
+Saved column selections live in each browser (`localStorage`), not on the server.
+
+## Security
+
+The app has no accounts, so the API is public. These controls keep it from being abused:
+
+| Threat | Control |
+|--------|---------|
+| Scripts calling the API directly | Cloudflare Turnstile token required on every upload (when `TURNSTILE_SECRET_KEY` is set); production POSTs without an `Origin` header are refused |
+| Flooding / compute cost | Per-client hourly file limit (IPv6 grouped by /64) plus a global hourly cap; checked before the upload is parsed; fails closed in production |
+| Decompression bombs and odd page sizes | Image dimensions read from the file header before decoding; images and rendered pages capped at 25 MP and 12 000 px a side; PDFs capped at 10 pages; pdf.js skips oversized embedded images |
+| Disguised files | Type detected from the file's bytes, not the client's `Content-Type` |
+| Large or malformed bodies | Multer limits on files, fields and parts; JSON bodies capped at 10 KB; Vercel caps bodies at 4.5 MB |
+| Information leaks | Parser errors replaced by a generic message (details go to the server log); DB setup hints hidden from `/api/health` in production |
+| Client-side attacks | CSP, `X-Frame-Options`, `nosniff`, HSTS and Referrer-Policy headers in `client/vercel.json`; CSV/XLSX formula injection neutralised |
+
+If you edit the inline theme script in `client/index.html`, update its `sha256` in the CSP in `client/vercel.json`, or the browser will block it.
 
 ## Data stored in MongoDB
 
 | Collection | What | Notes |
 |------------|------|-------|
-| `columnpresets` | named column selections (field keys only) | soft delete; name unique ignoring case |
 | `ratelimits` | per-IP counters for each hour | TTL index removes them when the window ends |
 
 Student data is never stored: PDFs and extracted results live only in the request and in the browser.
@@ -126,8 +150,12 @@ The client merges fields from all cards into columns, the user picks the ones th
 
 Create **two** Vercel projects from this repo:
 
-1. **gradegrid-api** with Root Directory `server`. Env vars: `MONGODB_URI` (Atlas; Network Access must allow `0.0.0.0/0`), `CLIENT_ORIGINS` (the client URL), `NODE_ENV=production`.
-2. **gradegrid** with Root Directory `client` and Framework preset Vite. Env var: `VITE_API_URL` (the API URL).
+1. **gradegrid-api** with Root Directory `server`. Env vars: `MONGODB_URI` (Atlas; Network Access must allow `0.0.0.0/0`), `CLIENT_ORIGINS` (the client URL), `NODE_ENV=production`, and `TURNSTILE_SECRET_KEY` if you use Turnstile.
+2. **gradegrid** with Root Directory `client` and Framework preset Vite. Env vars: `VITE_API_URL` (the API URL) and `VITE_TURNSTILE_SITE_KEY` if you use Turnstile.
+
+Turnstile: in the Cloudflare dashboard add a widget (mode **Managed** or **Invisible**) for the client's domain, then set the site key on the client and the secret key on the server. Set both or neither.
+
+Because Atlas must accept connections from any IP (Vercel has no fixed outbound IPs), the password is the only thing protecting the database. Use a long random password, and a database user whose only role is `readWrite` on the `gradegrid` database. Set a spend limit in Vercel as a last line of defence against compute abuse.
 
 Vercel limits each serverless request body to 4.5 MB, so the client must send PDFs in batches that stay under that size.
 

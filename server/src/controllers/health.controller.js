@@ -1,4 +1,5 @@
 import { connectDB, getDbIssue, isDbConfigured } from '../config/db.js';
+import { env } from '../config/env.js';
 
 const dbStatus = async () => {
   if (!isDbConfigured()) return 'not configured';
@@ -18,7 +19,8 @@ export const getHealth = async (_req, res, next) => {
       data: {
         status: 'ok',
         db,
-        ...(db === 'unreachable' && { dbIssue: getDbIssue() }),
+        // Setup hints help locally but tell outsiders how the database is configured.
+        ...(db === 'unreachable' && !env.isProd && { dbIssue: getDbIssue() }),
         time: new Date().toISOString(),
       },
     });

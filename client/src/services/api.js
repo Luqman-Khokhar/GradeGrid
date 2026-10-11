@@ -1,3 +1,5 @@
+import { getTurnstileToken } from './turnstile';
+
 const BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
 export class ApiError extends Error {
@@ -18,9 +20,12 @@ const request = async (path, options = {}) => {
 
 export const api = {
   health: () => request('/health'),
-  extractResults: (files) => {
+  extractResults: async (files) => {
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
-    return request('/results/extract', { method: 'POST', body: form });
+    // Tokens are single use, so every batch gets its own.
+    const token = await getTurnstileToken();
+    const headers = token ? { 'cf-turnstile-response': token } : undefined;
+    return request('/results/extract', { method: 'POST', body: form, headers });
   },
 };
