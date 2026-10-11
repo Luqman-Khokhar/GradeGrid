@@ -61,7 +61,7 @@ export function ExportPanel() {
 
       {emptyNames.length > 0 && (
         <Alert title={`No details found in ${emptyNames.length} file${emptyNames.length > 1 ? 's' : ''}`}>
-          {emptyNames.join(', ')}. The PDF may be blurry or use a layout GradeGrid does not support yet, so it is left out of the CSV.
+          {emptyNames.join(', ')}. The file may be blurry or use a layout GradeGrid does not support yet, so it is left out of the download.
         </Alert>
       )}
 

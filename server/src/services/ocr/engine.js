@@ -15,7 +15,8 @@ mkdirSync(CACHE_PATH, { recursive: true });
 const WHITELISTS = {
   number: '0123456789.-',
   grade: 'ABCDEF+-',
-  status: 'ABCDEFLPRW-',
+  // P = pass, F = fail, A = absent, - = not applicable; a wider set lets P drift to D.
+  status: 'PFA-',
 };
 
 let textWorker = null;

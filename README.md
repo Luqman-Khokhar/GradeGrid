@@ -1,6 +1,6 @@
 # GradeGrid
 
-Turn student result card PDFs into a single CSV. Upload many PDFs, choose the columns you want, download one CSV with one row per student. Responsive and installable as a PWA.
+Turn student result cards (PDFs or screenshots) into one spreadsheet. Upload many files, choose the columns you want, and download one Excel or CSV file with one row per student. Responsive and installable as a PWA.
 
 ## Stack
 
@@ -84,7 +84,7 @@ Client: http://localhost:5173 · API: http://localhost:5000/api/health
 | Method | Path | Body | Result |
 |--------|------|------|--------|
 | GET | `/api/health` | — | status + DB state (`connected` / `unreachable` / `not configured`) |
-| POST | `/api/results/extract` | multipart `files[]` (PDF) | per file: `{ fields: [{ key, label, value }], warnings, source }`; rate limited per IP |
+| POST | `/api/results/extract` | multipart `files[]` (PDF, PNG, JPG, WebP) | per file: `{ fields: [{ key, label, value }], warnings, source }`; rate limited per IP |
 | GET | `/api/presets` | — | saved column selections |
 | POST | `/api/presets` | `{ name, columns: [key] }` | created selection (409 if the name exists) |
 | DELETE | `/api/presets/:id` | — | soft delete |
@@ -112,6 +112,8 @@ Student data is never stored: PDFs and extracted results live only in the reques
 2. `engine.js` runs Tesseract (tesseract.js) with two engines: LSTM for words and layout, and the legacy engine for single marks cells, because LSTM drops this font's "1".
 3. `biseCard.js` recognises the BISE marks sheet, finds the subject rows, and re-reads every cell at known column positions.
 4. `reconcile.js` checks each subject's arithmetic (total = 11th + 12th + practical) and the grand total, auto-corrects single misreads, and returns warnings. The UI shows these warnings next to the file.
+
+**Screenshots** (PNG/JPG/WebP) take the same OCR path: `prepareImage` trims plain margins (page background, empty bars) and scales the content to OCR size. `biseCard.js` then locates the card from where the "Roll No." and "Registration No." labels appear (`findFrame`), so phone screenshots with a browser bar, desktop screenshots with margins and tight crops all map onto the same column positions. Camera photos of printed cards (angled, shadowed) are not supported.
 
 Other scanned layouts fall back to the generic `Label: value` parser over the OCR text. OCR takes about 10 s per card; the first request on a fresh server also downloads about 23 MB of language data into the OS temp dir.
 

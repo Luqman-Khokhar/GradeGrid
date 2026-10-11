@@ -81,7 +81,7 @@ export function UploadPanel() {
 
       {items.length === 0 ? (
         <p className="text-center text-sm text-fg-muted">
-          No result cards added yet. Choose PDFs above to get started.
+          No result cards added yet. Choose PDFs or screenshots above to get started.
         </p>
       ) : (
         <div className="space-y-4">
