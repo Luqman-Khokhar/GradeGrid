@@ -4,6 +4,13 @@ import { Spinner } from '../../components/Spinner';
 import { formatBytes } from '../../utils/format';
 
 function FileStatus({ result, isUploading }) {
+  if (result?.ok && !result.fields?.length) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-danger">
+        <AlertIcon className="size-3.5" /> No details found
+      </span>
+    );
+  }
   if (result?.ok) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-success">

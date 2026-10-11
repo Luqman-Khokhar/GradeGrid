@@ -18,7 +18,8 @@
     "dev:client": "npm run dev -w client",
     "dev:server": "npm run dev -w server",
     "build": "npm run build -w client",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "npm test --workspaces"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

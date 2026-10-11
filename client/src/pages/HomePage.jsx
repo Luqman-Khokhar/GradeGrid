@@ -1,3 +1,4 @@
+import { ExportPanel } from '../features/export/ExportPanel';
 import { UploadPanel } from '../features/upload/UploadPanel';
 
 export function HomePage() {
@@ -11,6 +12,7 @@ export function HomePage() {
         </p>
       </section>
       <UploadPanel />
+      <ExportPanel />
     </div>
   );
 }
