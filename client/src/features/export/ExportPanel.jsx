@@ -1,11 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Alert } from '../../components/Alert';
-import { Button } from '../../components/Button';
-import { DownloadIcon } from '../../components/icons';
-import { downloadCsv, toCsv } from '../../utils/csv';
 import { SavedSelections } from '../presets/SavedSelections';
 import { ColumnPicker } from './ColumnPicker';
+import { DownloadActions } from './DownloadActions';
 import { groupColumns } from './columnGroups';
 import { ResultsPreview } from './ResultsPreview';
 import {
@@ -49,11 +47,6 @@ export function ExportPanel() {
       keys.forEach((key) => (include ? next.delete(key) : next.add(key)));
       return next;
     });
-
-  const handleDownload = () => {
-    const date = new Date().toISOString().slice(0, 10);
-    downloadCsv(`gradegrid-results-${date}.csv`, toCsv(selectedColumns, rows));
-  };
 
   return (
     <section aria-labelledby="export-heading" className="space-y-6 border-t border-border pt-8">
@@ -102,16 +95,11 @@ export function ExportPanel() {
             <ResultsPreview columns={selectedColumns} rows={rows} />
           ) : (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-fg-muted">
-              Select at least one column to preview and download the CSV.
+              Select at least one column to preview and download the file.
             </p>
           )}
 
-          <div className="flex justify-end">
-            <Button onClick={handleDownload} disabled={!selectedColumns.length} className="w-full sm:w-auto">
-              <DownloadIcon />
-              Download CSV ({rows.length} student{rows.length > 1 ? 's' : ''})
-            </Button>
-          </div>
+          <DownloadActions columns={selectedColumns} rows={rows} />
         </>
       )}
     </section>

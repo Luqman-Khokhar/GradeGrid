@@ -1,3 +1,5 @@
+import { downloadBlob } from './download.js';
+
 const NUMBER = /^[-+]?\d+(\.\d+)?$/;
 // Spreadsheet apps run cells starting with these as formulas (CSV injection).
 const FORMULA_START = /^[=+\-@\t\r]/;
@@ -17,13 +19,4 @@ export const toCsv = (columns, rows) => {
   return `\uFEFF${lines.join('\r\n')}\r\n`;
 };
 
-export const downloadCsv = (fileName, csv) => {
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-};
+export const downloadCsv = (fileName, csv) => downloadBlob(fileName, csv, 'text/csv;charset=utf-8');
