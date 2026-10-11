@@ -1,4 +1,4 @@
-import { connectDB, isDbConfigured } from '../config/db.js';
+import { connectDB, getDbIssue, isDbConfigured } from '../config/db.js';
 
 const dbStatus = async () => {
   if (!isDbConfigured()) return 'not configured';
@@ -12,11 +12,13 @@ const dbStatus = async () => {
 
 export const getHealth = async (_req, res, next) => {
   try {
+    const db = await dbStatus();
     res.json({
       success: true,
       data: {
         status: 'ok',
-        db: await dbStatus(),
+        db,
+        ...(db === 'unreachable' && { dbIssue: getDbIssue() }),
         time: new Date().toISOString(),
       },
     });

@@ -27,7 +27,8 @@ export const errorHandler = (err, _req, res, _next) => {
     message = 'Invalid id';
   }
 
-  if (status >= 500) {
+  // Unexpected errors are logged and hidden in production; HttpErrors carry a message meant for users.
+  if (status >= 500 && !(err instanceof HttpError)) {
     console.error(err);
     if (env.isProd) message = 'Internal server error';
   }
