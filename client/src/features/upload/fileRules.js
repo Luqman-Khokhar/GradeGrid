@@ -3,7 +3,8 @@ import { formatBytes } from '../../utils/format';
 // Vercel rejects request bodies over 4.5 MB, so files and batches stay under 4 MB.
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_BATCH_BYTES = 4 * 1024 * 1024;
-const MAX_BATCH_FILES = 20;
+// Scanned cards take ~10 s each to OCR; small batches keep requests well inside function time limits.
+const MAX_BATCH_FILES = 4;
 
 export const fileId = (file) => `${file.name}-${file.size}-${file.lastModified}`;
 

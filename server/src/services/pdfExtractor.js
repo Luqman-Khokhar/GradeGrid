@@ -1,11 +1,14 @@
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { extractFields } from './fieldExtractor.js';
+import { ocrPage } from './ocr/index.js';
 import { layoutLines } from './textLayout.js';
 
 /**
- * Extract positioned text from a PDF buffer: one line per row, cells separated by tabs.
- * Field mapping (template-based or generic key/value detection) builds on top of this.
+ * Read a result card PDF into labelled fields.
+ * Text PDFs use their text layer (fast, exact). Scanned/image PDFs have none, so the
+ * first page is OCR'd instead; each result card is one student on one page.
  */
-export const extractText = async (buffer) => {
+export const extractFromPdf = async (buffer) => {
   const doc = await getDocument({
     data: new Uint8Array(buffer),
     isEvalSupported: false,
@@ -22,7 +25,12 @@ export const extractText = async (buffer) => {
       pages.push(layoutLines(items));
       page.cleanup();
     }
-    return { text: pages.join('\n'), pages: doc.numPages };
+    const text = pages.join('\n');
+    if (text.trim()) return { pages: doc.numPages, source: 'text', fields: extractFields(text), warnings: [] };
+
+    const { fields, warnings } = await ocrPage(await doc.getPage(1));
+    if (doc.numPages > 1) warnings.push(`Only page 1 of ${doc.numPages} was read.`);
+    return { pages: doc.numPages, source: 'ocr', fields, warnings };
   } finally {
     await doc.destroy();
   }

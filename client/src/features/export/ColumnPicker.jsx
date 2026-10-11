@@ -3,8 +3,9 @@ import { Button } from '../../components/Button';
 
 const SEARCH_THRESHOLD = 12;
 
-export function ColumnPicker({ columns, totalRows, selectedKeys, onToggle, onSelectAll, onClear }) {
+export function ColumnPicker({ columns, groups, totalRows, selectedKeys, onToggle, onSetMany, onSelectAll, onClear }) {
   const searchId = useId();
+  const quickPickId = useId();
   const [query, setQuery] = useState('');
 
   const needle = query.trim().toLowerCase();
@@ -27,6 +28,30 @@ export function ColumnPicker({ columns, totalRows, selectedKeys, onToggle, onSel
           </Button>
         </div>
       </div>
+
+      {groups.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium" id={quickPickId}>
+            Quick pick for every subject
+          </p>
+          <div className="flex flex-wrap gap-2" role="group" aria-labelledby={quickPickId}>
+            {groups.map((group) => {
+              const allOn = group.keys.every((key) => selectedKeys.has(key));
+              return (
+                <Button
+                  key={group.label}
+                  variant={allOn ? 'primary' : 'secondary'}
+                  size="sm"
+                  aria-pressed={allOn}
+                  onClick={() => onSetMany(group.keys, !allOn)}
+                >
+                  {group.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {columns.length > SEARCH_THRESHOLD && (
         <div className="space-y-1">
