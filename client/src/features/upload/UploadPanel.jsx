@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Alert } from '../../components/Alert';
 import { Button } from '../../components/Button';
+import { Panel } from '../../components/Panel';
 import { Spinner } from '../../components/Spinner';
 import { FileDropzone } from './FileDropzone';
 import { SelectedFileList } from './SelectedFileList';
@@ -42,11 +43,12 @@ export function UploadPanel() {
   };
 
   return (
-    <section aria-labelledby="upload-heading" className="space-y-6">
-      <h2 id="upload-heading" className="sr-only">
-        Upload result cards
-      </h2>
-
+    <Panel
+      headingId="upload-heading"
+      title="Result cards"
+      description="Add the cards to read. Nothing is extracted until you press Extract."
+      meta={items.length > 0 && `${items.length} file${items.length > 1 ? 's' : ''}`}
+    >
       <FileDropzone onFiles={addFiles} disabled={isUploading} />
 
       {rejections.length > 0 && (
@@ -80,11 +82,11 @@ export function UploadPanel() {
       )}
 
       {items.length === 0 ? (
-        <p className="text-center text-sm text-fg-muted">
+        <p className="text-sm text-fg-muted">
           No result cards added yet. Choose PDFs or screenshots above to get started.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-medium">
               {items.length} file{items.length > 1 ? 's' : ''} selected
@@ -130,6 +132,6 @@ export function UploadPanel() {
           </div>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

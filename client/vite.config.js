@@ -14,7 +14,7 @@ export default defineConfig({
         name: 'GradeGrid',
         short_name: 'GradeGrid',
         description: 'Turn student result card PDFs into one CSV.',
-        theme_color: '#4f46e5',
+        theme_color: '#17705b',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',

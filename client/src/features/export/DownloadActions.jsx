@@ -29,12 +29,12 @@ export function DownloadActions({ columns, rows }) {
   };
 
   return (
-    <div className="space-y-3">
-      <p id={noteId} className="text-sm text-fg-muted">
+    <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+      <p id={noteId} className="max-w-xl text-[13px] text-fg-muted">
         The Excel file is ready to use: every column can be filtered, sorted and searched from its header. Red marks a
         fail, absence or under {FAIL_PERCENT}%; amber marks under {LOW_PERCENT}% or a low grade.
       </p>
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button
           variant="secondary"
           onClick={() => downloadCsv(`${fileStem()}.csv`, toCsv(columns, rows))}
@@ -49,7 +49,7 @@ export function DownloadActions({ columns, rows }) {
         </Button>
       </div>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-danger lg:basis-full">
           {error}
         </p>
       )}

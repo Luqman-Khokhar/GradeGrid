@@ -41,8 +41,8 @@ export function SavedSelections({ availableKeys, selectedKeys, onApply }) {
   };
 
   return (
-    <section aria-labelledby={`${inputId}-heading`} className="space-y-3 rounded-xl border border-border p-4">
-      <h3 id={`${inputId}-heading`} className="text-sm font-semibold">
+    <section aria-labelledby={`${inputId}-heading`} className="space-y-3 rounded-md border border-border bg-canvas p-3 sm:p-4">
+      <h3 id={`${inputId}-heading`} className="text-[13px] font-semibold">
         Saved selections
       </h3>
 
@@ -70,7 +70,7 @@ export function SavedSelections({ availableKeys, selectedKeys, onApply }) {
       {items.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {items.map((preset) => (
-            <li key={preset.id} className="flex items-center rounded-lg border border-border">
+            <li key={preset.id} className="flex items-center rounded-md border border-border bg-surface">
               <Button variant="ghost" size="sm" onClick={() => apply(preset)} title={`${preset.columns.length} columns`}>
                 {preset.name}
               </Button>
@@ -103,9 +103,9 @@ export function SavedSelections({ availableKeys, selectedKeys, onApply }) {
       {removeError && <p className="text-sm text-danger">Could not delete: {removeError}</p>}
 
       {status === 'succeeded' && (
-        <form onSubmit={handleSave} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <form onSubmit={handleSave} className="flex flex-col gap-2 sm:flex-row sm:items-end sm:max-w-lg">
           <div className="min-w-0 flex-1 space-y-1">
-            <label htmlFor={inputId} className="text-sm font-medium">
+            <label htmlFor={inputId} className="text-[13px] font-medium text-fg-muted">
               Save current selection as
             </label>
             <input
@@ -119,7 +119,7 @@ export function SavedSelections({ availableKeys, selectedKeys, onApply }) {
               placeholder="e.g. Totals only"
               aria-invalid={Boolean(saveError)}
               aria-describedby={saveError ? errorId : undefined}
-              className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm placeholder:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 aria-[invalid=true]:border-danger"
+              className="h-9 w-full rounded-md border border-border-strong/70 bg-surface px-3 text-sm placeholder:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 aria-[invalid=true]:border-danger"
             />
           </div>
           <Button type="submit" variant="secondary" disabled={!name.trim() || !selectedKeys.size || saving}>
