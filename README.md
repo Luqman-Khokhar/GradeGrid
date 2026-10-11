@@ -47,9 +47,12 @@ Create `server/.env`:
 ```env
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/gradegrid
+# Optional. Without it extraction still works; saved selections and rate limiting are off.
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/gradegrid?retryWrites=true&w=majority
 CLIENT_ORIGINS=http://localhost:5173
 MAX_FILE_SIZE_MB=4
+# PDFs one IP may process per hour (needs MongoDB)
+RATE_LIMIT_FILES_PER_HOUR=200
 ```
 
 Create `client/.env`:
@@ -80,8 +83,20 @@ Client: http://localhost:5173 · API: http://localhost:5000/api/health
 
 | Method | Path | Body | Result |
 |--------|------|------|--------|
-| GET | `/api/health` | — | status + DB state |
-| POST | `/api/results/extract` | multipart `files[]` (PDF) | labelled fields per file: `[{ key, label, value }]` |
+| GET | `/api/health` | — | status + DB state (`connected` / `unreachable` / `not configured`) |
+| POST | `/api/results/extract` | multipart `files[]` (PDF) | per file: `{ fields: [{ key, label, value }], warnings, source }`; rate limited per IP |
+| GET | `/api/presets` | — | saved column selections |
+| POST | `/api/presets` | `{ name, columns: [key] }` | created selection (409 if the name exists) |
+| DELETE | `/api/presets/:id` | — | soft delete |
+
+## Data stored in MongoDB
+
+| Collection | What | Notes |
+|------------|------|-------|
+| `columnpresets` | named column selections (field keys only) | soft delete; name unique ignoring case |
+| `ratelimits` | per-IP counters for each hour | TTL index removes them when the window ends |
+
+Student data is never stored: PDFs and extracted results live only in the request and in the browser.
 
 ## How extraction works
 
@@ -106,7 +121,7 @@ The client merges fields from all cards into columns, the user picks the ones th
 
 Create **two** Vercel projects from this repo:
 
-1. **gradegrid-api** with Root Directory `server`. Env vars: `MONGODB_URI` (Atlas), `CLIENT_ORIGINS` (the client URL), `NODE_ENV=production`.
+1. **gradegrid-api** with Root Directory `server`. Env vars: `MONGODB_URI` (Atlas; Network Access must allow `0.0.0.0/0`), `CLIENT_ORIGINS` (the client URL), `NODE_ENV=production`.
 2. **gradegrid** with Root Directory `client` and Framework preset Vite. Env var: `VITE_API_URL` (the API URL).
 
 Vercel limits each serverless request body to 4.5 MB, so the client must send PDFs in batches that stay under that size.
