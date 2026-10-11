@@ -4,6 +4,7 @@ import { Alert } from '../../components/Alert';
 import { Button } from '../../components/Button';
 import { DownloadIcon } from '../../components/icons';
 import { downloadCsv, toCsv } from '../../utils/csv';
+import { SavedSelections } from '../presets/SavedSelections';
 import { ColumnPicker } from './ColumnPicker';
 import { groupColumns } from './columnGroups';
 import { ResultsPreview } from './ResultsPreview';
@@ -29,6 +30,7 @@ export function ExportPanel() {
     () => new Set(allColumns.filter((column) => !excluded.has(column.key)).map((column) => column.key)),
     [allColumns, excluded],
   );
+  const availableKeys = useMemo(() => new Set(allColumns.map((column) => column.key)), [allColumns]);
   const selectedColumns = allColumns.filter((column) => selectedKeys.has(column.key));
 
   if (!rows.length && !emptyNames.length) return null;
@@ -79,6 +81,12 @@ export function ExportPanel() {
 
       {rows.length > 0 && (
         <>
+          <SavedSelections
+            availableKeys={availableKeys}
+            selectedKeys={selectedKeys}
+            onApply={(keys) => setExcluded(new Set(allColumns.filter((c) => !keys.has(c.key)).map((c) => c.key)))}
+          />
+
           <ColumnPicker
             columns={allColumns}
             groups={groups}

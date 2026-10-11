@@ -23,4 +23,8 @@ export const api = {
     files.forEach((file) => form.append('files', file));
     return request('/results/extract', { method: 'POST', body: form });
   },
+  listPresets: () => request('/presets'),
+  createPreset: (preset) =>
+    request('/presets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(preset) }),
+  deletePreset: (id) => request(`/presets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

@@ -1,6 +1,14 @@
-import mongoose from 'mongoose';
+import { connectDB, isDbConfigured } from '../config/db.js';
 
-const STATES = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+const dbStatus = async () => {
+  if (!isDbConfigured()) return 'not configured';
+  try {
+    await connectDB();
+    return 'connected';
+  } catch {
+    return 'unreachable';
+  }
+};
 
 export const getHealth = async (_req, res, next) => {
   try {
@@ -8,7 +16,7 @@ export const getHealth = async (_req, res, next) => {
       success: true,
       data: {
         status: 'ok',
-        db: STATES[mongoose.connection.readyState] ?? 'unknown',
+        db: await dbStatus(),
         time: new Date().toISOString(),
       },
     });

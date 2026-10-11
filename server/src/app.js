@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { env } from './config/env.js';
-import { connectDB } from './config/db.js';
 import routes from './routes/index.js';
 import { errorHandler, HttpError, notFound } from './middleware/errorHandler.js';
 
@@ -19,15 +18,10 @@ app.use(
   }),
 );
 app.use(express.json({ limit: '1mb' }));
+// Vercel sits in front as one proxy hop; needed for the real client IP in rate limiting.
+app.set('trust proxy', 1);
 
-app.use('/api', async (_req, _res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
+// Routes connect to MongoDB only when they need it, so extraction works even if the DB is down.
 app.use('/api', routes);
 
 app.use(notFound);
