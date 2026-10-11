@@ -1,4 +1,7 @@
+import { LinkedInIcon } from './icons';
 import { ThemeToggle } from './ThemeToggle';
+
+const DEVELOPER = { name: 'Muhammad Luqman', url: 'https://www.linkedin.com/in/mluqmangn' };
 
 export function AppLayout({ children }) {
   return (
@@ -15,8 +18,23 @@ export function AppLayout({ children }) {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10">{children}</main>
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-fg-muted sm:px-6">
-          <span>© {new Date().getFullYear()} GradeGrid</span>
-          <span>Files are read to extract marks and are not kept.</span>
+          <p>
+            © {new Date().getFullYear()} GradeGrid
+            <span> · Files are read to extract marks and are not kept.</span>
+          </p>
+          <p className="flex items-center gap-1.5">
+            Built by
+            <a
+              href={DEVELOPER.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded font-medium text-fg transition-colors hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:hover:text-brand-500"
+            >
+              {DEVELOPER.name}
+              <LinkedInIcon className="size-3.5" />
+              <span className="sr-only">on LinkedIn (opens in a new tab)</span>
+            </a>
+          </p>
         </div>
       </footer>
     </div>
