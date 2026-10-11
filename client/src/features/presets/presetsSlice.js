@@ -1,11 +1,11 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { api } from '../../services/api';
+import { presetStore } from './presetStorage';
 
 const toMessage = (err) => err.message ?? 'Something went wrong.';
 
 export const fetchPresets = createAsyncThunk('presets/fetch', async (_, { rejectWithValue }) => {
   try {
-    return await api.listPresets();
+    return presetStore.list();
   } catch (err) {
     return rejectWithValue(toMessage(err));
   }
@@ -13,7 +13,7 @@ export const fetchPresets = createAsyncThunk('presets/fetch', async (_, { reject
 
 export const savePreset = createAsyncThunk('presets/save', async (preset, { rejectWithValue }) => {
   try {
-    return await api.createPreset(preset);
+    return presetStore.create(preset);
   } catch (err) {
     return rejectWithValue(toMessage(err));
   }
@@ -21,8 +21,7 @@ export const savePreset = createAsyncThunk('presets/save', async (preset, { reje
 
 export const removePreset = createAsyncThunk('presets/remove', async (id, { rejectWithValue }) => {
   try {
-    await api.deletePreset(id);
-    return id;
+    return presetStore.remove(id);
   } catch (err) {
     return rejectWithValue(toMessage(err));
   }

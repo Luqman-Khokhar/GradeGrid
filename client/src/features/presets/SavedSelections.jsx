@@ -5,7 +5,7 @@ import { CloseIcon } from '../../components/icons';
 import { Spinner } from '../../components/Spinner';
 import { clearSaveError, fetchPresets, removePreset, savePreset, selectPresets } from './presetsSlice';
 
-/** Named column selections stored on the server, shared by everyone using this GradeGrid. */
+/** Named column selections saved in this browser only; other users never see them. */
 export function SavedSelections({ availableKeys, selectedKeys, onApply }) {
   const dispatch = useDispatch();
   const { items, status, error, saving, saveError, removeError } = useSelector(selectPresets);
@@ -63,7 +63,7 @@ export function SavedSelections({ availableKeys, selectedKeys, onApply }) {
 
       {status === 'succeeded' && items.length === 0 && (
         <p className="text-sm text-fg-muted">
-          No saved selections yet. Pick columns below, then save them here to reuse next time.
+          No saved selections yet. Pick columns below, then save them here to reuse next time. They stay in this browser only.
         </p>
       )}
 
