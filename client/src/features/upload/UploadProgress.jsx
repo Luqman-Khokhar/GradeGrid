@@ -13,7 +13,7 @@ export function UploadProgress({ done, total }) {
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={done}
-        className="h-2 overflow-hidden rounded-full bg-surface-muted"
+        className="h-1.5 overflow-hidden rounded-full bg-surface-muted"
       >
         <div className="h-full rounded-full bg-brand-600 transition-[width]" style={{ width: `${percent}%` }} />
       </div>

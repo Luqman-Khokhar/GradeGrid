@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Alert } from '../../components/Alert';
+import { Panel } from '../../components/Panel';
 import { SavedSelections } from '../presets/SavedSelections';
 import { ColumnPicker } from './ColumnPicker';
 import { DownloadActions } from './DownloadActions';
@@ -49,59 +50,63 @@ export function ExportPanel() {
     });
 
   return (
-    <section aria-labelledby="export-heading" className="space-y-6 border-t border-border pt-8">
-      <div className="space-y-1">
-        <h2 id="export-heading" className="text-xl font-semibold">
-          Choose columns
-        </h2>
-        <p className="text-sm text-fg-muted">
-          Pick the details to keep. Each student becomes one row in the CSV.
-        </p>
-      </div>
+    <>
+      <Panel
+        headingId="export-heading"
+        title="Columns"
+        description="Pick the details to keep. Each student becomes one row in the file."
+      >
+        {emptyNames.length > 0 && (
+          <Alert title={`No details found in ${emptyNames.length} file${emptyNames.length > 1 ? 's' : ''}`}>
+            {emptyNames.join(', ')}. The file may be blurry or use a layout GradeGrid does not support yet, so it is left out of the download.
+          </Alert>
+        )}
 
-      {emptyNames.length > 0 && (
-        <Alert title={`No details found in ${emptyNames.length} file${emptyNames.length > 1 ? 's' : ''}`}>
-          {emptyNames.join(', ')}. The file may be blurry or use a layout GradeGrid does not support yet, so it is left out of the download.
-        </Alert>
-      )}
+        {warnedNames.length > 0 && (
+          <Alert tone="warning" title={`Double-check ${warnedNames.length} card${warnedNames.length > 1 ? 's' : ''}`}>
+            {warnedNames.join(', ')}. Some values were unclear or auto-corrected so the marks add up. Details are listed
+            under each file above.
+          </Alert>
+        )}
 
-      {warnedNames.length > 0 && (
-        <Alert tone="warning" title={`Double-check ${warnedNames.length} card${warnedNames.length > 1 ? 's' : ''}`}>
-          {warnedNames.join(', ')}. Some values were unclear or auto-corrected so the marks add up. Details are listed
-          under each file above.
-        </Alert>
-      )}
+        {rows.length > 0 && (
+          <>
+            <SavedSelections
+              availableKeys={availableKeys}
+              selectedKeys={selectedKeys}
+              onApply={(keys) => setExcluded(new Set(allColumns.filter((c) => !keys.has(c.key)).map((c) => c.key)))}
+            />
+
+            <ColumnPicker
+              columns={allColumns}
+              groups={groups}
+              totalRows={rows.length}
+              selectedKeys={selectedKeys}
+              onToggle={toggle}
+              onSetMany={setMany}
+              onSelectAll={() => setExcluded(new Set())}
+              onClear={() => setExcluded(new Set(allColumns.map((column) => column.key)))}
+            />
+          </>
+        )}
+      </Panel>
 
       {rows.length > 0 && (
-        <>
-          <SavedSelections
-            availableKeys={availableKeys}
-            selectedKeys={selectedKeys}
-            onApply={(keys) => setExcluded(new Set(allColumns.filter((c) => !keys.has(c.key)).map((c) => c.key)))}
-          />
-
-          <ColumnPicker
-            columns={allColumns}
-            groups={groups}
-            totalRows={rows.length}
-            selectedKeys={selectedKeys}
-            onToggle={toggle}
-            onSetMany={setMany}
-            onSelectAll={() => setExcluded(new Set())}
-            onClear={() => setExcluded(new Set(allColumns.map((column) => column.key)))}
-          />
-
+        <Panel
+          headingId="download-heading"
+          title="Preview and download"
+          meta={`${rows.length} student${rows.length > 1 ? 's' : ''} · ${selectedColumns.length} column${selectedColumns.length === 1 ? '' : 's'}`}
+          footer={<DownloadActions columns={selectedColumns} rows={rows} />}
+        >
           {selectedColumns.length > 0 ? (
             <ResultsPreview columns={selectedColumns} rows={rows} />
           ) : (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-fg-muted">
+            <p className="rounded-md border border-dashed border-border-strong p-6 text-center text-sm text-fg-muted">
               Select at least one column to preview and download the file.
             </p>
           )}
-
-          <DownloadActions columns={selectedColumns} rows={rows} />
-        </>
+        </Panel>
       )}
-    </section>
+    </>
   );
 }

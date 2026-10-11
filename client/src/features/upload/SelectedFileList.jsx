@@ -37,11 +37,11 @@ function FileStatus({ result, isUploading }) {
 
 export function SelectedFileList({ items, results, isUploading, onRemove }) {
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border">
+    <ul className="scroll-area max-h-96 divide-y divide-border overflow-y-auto rounded-md border border-border">
       {items.map(({ id, file }) => {
         const result = results[id];
         return (
-          <li key={id} className="flex items-start gap-3 px-3 py-3 sm:px-4">
+          <li key={id} className="flex items-start gap-3 px-3 py-2.5 sm:px-4">
             <FileIcon className="mt-0.5 size-5 shrink-0 text-fg-muted" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium" title={file.name}>

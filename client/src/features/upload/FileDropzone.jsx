@@ -34,16 +34,16 @@ export function FileDropzone({ onFiles, disabled = false }) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-10 text-center transition-colors sm:py-14 ${
-        isDragging ? 'border-brand-500 bg-brand-50' : 'border-border bg-surface-muted'
+      className={`flex flex-col items-center gap-3 rounded-md border border-dashed px-4 py-8 text-center transition-colors sm:flex-row sm:gap-4 sm:px-5 sm:py-6 sm:text-left ${
+        isDragging ? 'border-brand-500 bg-brand-50' : 'border-border-strong bg-canvas'
       } ${disabled ? 'opacity-60' : ''}`}
     >
-      <span className="flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-500">
-        <UploadIcon className="size-6" />
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-fg-muted">
+        <UploadIcon className="size-5" />
       </span>
-      <div className="space-y-1">
-        <p className="font-medium">
-          <span className="hidden sm:inline">Drag and drop result cards here, or</span>
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-sm font-medium">
+          <span className="hidden sm:inline">Drop result cards here, or choose files</span>
           <span className="sm:hidden">Add result cards</span>
         </p>
         <p id={hintId} className="text-sm text-fg-muted">
@@ -53,7 +53,7 @@ export function FileDropzone({ onFiles, disabled = false }) {
           Tip: use the downloaded PDF or a screenshot. Camera photos of a printed card may not read correctly.
         </p>
       </div>
-      <Button onClick={() => inputRef.current?.click()} disabled={disabled} aria-describedby={hintId}>
+      <Button variant="secondary" onClick={() => inputRef.current?.click()} disabled={disabled} aria-describedby={hintId}>
         Choose files
       </Button>
       <input
