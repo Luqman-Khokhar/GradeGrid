@@ -1,7 +1,12 @@
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+// pdf.js loads its worker with a dynamic import that Vercel's file tracer cannot see.
+// Importing it statically bundles it, and pdf.js then runs it on the main thread.
+import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import { extractFields } from './fieldExtractor.js';
 import { ocrPage } from './ocr/index.js';
 import { layoutLines } from './textLayout.js';
+
+globalThis.pdfjsWorker ??= pdfjsWorker;
 
 /**
  * Read a result card PDF into labelled fields.

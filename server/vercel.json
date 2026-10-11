@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 300,
+      "includeFiles": "../node_modules/tesseract.js-core/*.wasm"
+    }
+  },
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }
