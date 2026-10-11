@@ -115,7 +115,10 @@ Student data is never stored: PDFs and extracted results live only in the reques
 
 Other scanned layouts fall back to the generic `Label: value` parser over the OCR text. OCR takes about 10 s per card; the first request on a fresh server also downloads about 23 MB of language data into the OS temp dir.
 
-The client merges fields from all cards into columns, the user picks the ones they want (with one-click groups such as "Total" or "Grade" across every subject), and the CSV is built in the browser.
+The client merges fields from all cards into columns, the user picks the ones they want (with one-click groups such as "Total" or "Grade" across every subject), and the file is built in the browser:
+
+- **Excel (.xlsx)**, the main download, built with `exceljs` (loaded only when exporting): the data is an Excel table, so every header has filter, sort and search; numbers are stored as numbers; the header row and identity columns are frozen; failing or absent results and marks under 33% are red, and marks under 50% or low grades are amber. The rules live in `client/src/utils/xlsxPlan.js`.
+- **CSV**, for other systems. Formula-like values are neutralised against CSV injection.
 
 ## Deploy (Vercel)
 
