@@ -116,3 +116,31 @@ test('fails under 33%, a failed or absent status, and builds a title without a b
   assert.equal(subjectFailed({ max: '100', obtained: 'ABS' }), true);
   assert.equal(sheetTitle({ className: 'SSC (P-II)', session: 'Second Annual 2025' }), 'BISE - SSC (P-II) Second Annual Examination 2025');
 });
+
+test('rebuilds a card from flat fields when the API sent none', async () => {
+  const { cardFromFields } = await import('./classSheetPlan.js');
+  const field = (label, value) => ({ key: label.toLowerCase(), label, value });
+  const card = cardFromFields([
+    field('Roll No', '418796'),
+    field('Name', 'STUDENT'),
+    field("Father's Name", 'FATHER'),
+    field('Group', 'GENERAL SCIENCE'),
+    field('URDU Max', '200'),
+    field('URDU Total', '110'),
+    field('URDU Status 12th', 'F'),
+    field('PHYSICS Max', '85'),
+    field('PHYSICS Total', '36'),
+    field('PHYSICS Status', 'PASS'),
+    field('Grand Total Max', '285'),
+    field('Grand Total', '146'),
+  ]);
+  assert.deepEqual(
+    card.subjects.map((s) => [s.name, s.max, s.obtained, s.status]),
+    [
+      ['URDU', '200', '110', 'FAIL'],
+      ['PHYSICS', '85', '36', 'PASS'],
+    ],
+  );
+  assert.equal(card.totalObtained, '146');
+  assert.equal(cardFromFields([field('Name', 'X')]), null);
+});

@@ -1,4 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
+import { cardFromFields } from '../../utils/classSheetPlan';
 import { selectUpload } from '../upload/uploadSlice';
 
 export const FILE_COLUMN = { key: '__file', label: 'File name' };
@@ -41,9 +42,10 @@ export const selectColumns = createSelector([selectResults], (results) => {
   return [...columns.values()];
 });
 
-/** Structured cards from recognised BISE marks sheets; these feed the class sheet. */
+/** Structured cards for the class sheet; rebuilt from the fields when the API sent none. */
 export const selectCards = createSelector([selectResults], (results) =>
   Object.values(results)
-    .filter((result) => result.ok && result.card?.subjects?.length)
-    .map((result) => result.card),
+    .filter((result) => result.ok)
+    .map((result) => (result.card?.subjects?.length ? result.card : cardFromFields(result.fields)))
+    .filter(Boolean),
 );

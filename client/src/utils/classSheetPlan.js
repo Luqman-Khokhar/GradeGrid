@@ -162,3 +162,41 @@ export const buildClassSheets = (cards) => {
     };
   });
 };
+
+const SUBJECT_MAX = / Max$/;
+const PART_STATUS = / status (11th|12th|practical)$/;
+
+/**
+ * Rebuild a card from the flat fields, for results without `card` (older API or a card read
+ * by the generic parser). Subjects are the fields labelled "<SUBJECT> Max", in card order.
+ */
+export const cardFromFields = (fields = []) => {
+  const value = Object.fromEntries(fields.map((field) => [field.key, field.value]));
+  const subjects = fields
+    .filter((field) => SUBJECT_MAX.test(field.label) && field.key !== 'grand total max')
+    .map((field) => {
+      const name = field.label.replace(SUBJECT_MAX, '');
+      const key = name.toLowerCase();
+      const partFailed = fields.some((other) => other.key.startsWith(`${key} status `) && PART_STATUS.test(other.key) && /^(F|A)$/i.test(other.value));
+      return {
+        name,
+        max: field.value,
+        obtained: value[`${key} total`] ?? '',
+        status: value[`${key} status`] ?? (partFailed ? 'FAIL' : ''),
+      };
+    });
+  if (!subjects.length) return null;
+  return {
+    rollNo: value['roll no'] ?? '',
+    name: value.name ?? '',
+    fatherName: value["father's name"] ?? '',
+    className: value.class ?? '',
+    session: value.session ?? '',
+    group: value.group ?? '',
+    board: '',
+    result: value.result ?? '',
+    subjects,
+    totalMax: value['grand total max'] ?? '',
+    totalObtained: value['grand total'] ?? '',
+  };
+};
