@@ -94,7 +94,7 @@ Client: http://localhost:5173 · API: http://localhost:5000/api/health
 | Method | Path | Body | Result |
 |--------|------|------|--------|
 | GET | `/api/health` | — | status + DB state (`connected` / `unreachable` / `not configured`) |
-| POST | `/api/results/extract` | multipart `files[]` (PDF, PNG, JPG, WebP), up to 5 | per file: `{ fields: [{ key, label, value }], warnings, source }`; rate limited per client and globally |
+| POST | `/api/results/extract` | multipart `files[]` (PDF, PNG, JPG, WebP), up to 5 | per file: `{ fields: [{ key, label, value }], warnings, source, card? }`; `card` (student, subjects, totals, result) only for recognised BISE marks sheets; rate limited per client and globally |
 
 Saved column selections live in each browser (`localStorage`), not on the server.
 
@@ -134,14 +134,16 @@ Student data is never stored: PDFs and extracted results live only in the reques
 
 1. `renderPage.js` renders page 1 at ~1800 px wide in greyscale and stretches the contrast so the watermark disappears.
 2. `engine.js` runs Tesseract (tesseract.js) with two engines: LSTM for words and layout, and the legacy engine for single marks cells, because LSTM drops this font's "1".
-3. `biseCard.js` recognises the BISE marks sheet, finds the subject rows, and re-reads every cell at known column positions.
-4. `reconcile.js` checks each subject's arithmetic (total = 11th + 12th + practical) and the grand total, auto-corrects single misreads, and returns warnings. The UI shows these warnings next to the file.
+3. `biseCard.js` recognises the BISE marks sheet. Part-II cards (11th / 12th / Practical columns) are parsed there: it finds the subject rows and re-reads every cell at known column positions. Part-I cards (one Obtained column, e.g. HSSC (P-I)) go to `bisePart1.js`, which places columns from the heading words and re-reads cells only when the page reading does not add up to the card's totals.
+4. `reconcile.js` checks each subject's arithmetic (Part I: marks within max and summing to the total) (total = 11th + 12th + practical) and the grand total, auto-corrects single misreads, and returns warnings. The UI shows these warnings next to the file.
 
 **Screenshots** (PNG/JPG/WebP) take the same OCR path: `prepareImage` trims plain margins (page background, empty bars) and scales the content to OCR size. `biseCard.js` then locates the card from where the "Roll No." and "Registration No." labels appear (`findFrame`), so phone screenshots with a browser bar, desktop screenshots with margins and tight crops all map onto the same column positions. Camera photos of printed cards (angled, shadowed) are not supported.
 
 Other scanned layouts fall back to the generic `Label: value` parser over the OCR text. OCR takes about 10 s per card; the first request on a fresh server also downloads about 23 MB of language data into the OS temp dir.
 
-The client merges fields from all cards into columns, the user picks the ones they want (with one-click groups such as "Total" or "Grade" across every subject), and the file is built in the browser:
+For recognised BISE cards the main download is the **class sheet** (`client/src/utils/classSheetPlan.js`), the school's own marks-sheet layout: one worksheet per group, sorted by roll no, columns Roll No, Student Name, Father Name, one column per subject with its max in the header, then Total Max Marks, Total Obtained and Overall Status. Subjects that take the same place on the card share a column (`Phy / Eco (85/100)`), so a mixed class stays narrow; subject names are mapped to fixed headers and codes in `client/src/utils/subjects.js`, tolerating OCR misreads. A subject under 33% or absent is red, the student is COMPARTMENT, and Total Obtained lists the subject codes.
+
+Behind **Custom columns**, the client merges fields from all cards into columns, the user picks the ones they want (with one-click groups such as "Total" or "Grade" across every subject), and the file is built in the browser:
 
 - **Excel (.xlsx)**, the main download, built with `exceljs` (loaded only when exporting): the data is an Excel table, so every header has filter, sort and search; numbers are stored as numbers; the header row and identity columns are frozen; failing or absent results and marks under 33% are red, and marks under 50% or low grades are amber. The rules live in `client/src/utils/xlsxPlan.js`.
 - **CSV**, for other systems. Formula-like values are neutralised against CSV injection.

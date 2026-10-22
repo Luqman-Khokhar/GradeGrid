@@ -59,3 +59,9 @@ test('falls back to whole-canvas fractions when the labels are missing', async (
   const frame = findFrame([], 1000, 2000);
   assert.deepEqual(frame.toPage(500, 500), { x: 0.5, y: 0.25 });
 });
+
+test('reads the board and a compartment result', async () => {
+  const { parseBoard } = await import('./biseCard.js');
+  assert.equal(parseBoard(OCR_TEXT), 'Gujranwala');
+  assert.equal(parseHeader('The candidate is placed in compartment').Result, 'Compartment');
+});

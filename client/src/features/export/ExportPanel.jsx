@@ -3,12 +3,14 @@ import { useSelector } from 'react-redux';
 import { Alert } from '../../components/Alert';
 import { Panel } from '../../components/Panel';
 import { SavedSelections } from '../presets/SavedSelections';
+import { ClassSheetPanel } from './ClassSheetPanel';
 import { ColumnPicker } from './ColumnPicker';
 import { DownloadActions } from './DownloadActions';
 import { groupColumns } from './columnGroups';
 import { ResultsPreview } from './ResultsPreview';
 import {
   FILE_COLUMN,
+  selectCards,
   selectColumns,
   selectEmptyResultNames,
   selectStudentRows,
@@ -20,6 +22,8 @@ export function ExportPanel() {
   const fieldColumns = useSelector(selectColumns);
   const emptyNames = useSelector(selectEmptyResultNames);
   const warnedNames = useSelector(selectWarnedNames);
+  const cards = useSelector(selectCards);
+  const [customOpen, setCustomOpen] = useState(false);
   // Track exclusions so columns from newly extracted cards start selected.
   const [excluded, setExcluded] = useState(() => new Set());
 
@@ -49,25 +53,47 @@ export function ExportPanel() {
       return next;
     });
 
+  // Recognised marks sheets download as the class sheet; the column picker stays one click away.
+  const showCustom = !cards.length || customOpen;
+
+  const notices = (
+    <>
+      {emptyNames.length > 0 && (
+        <Alert title={`No details found in ${emptyNames.length} file${emptyNames.length > 1 ? 's' : ''}`}>
+          {emptyNames.join(', ')}. The file may be blurry or use a layout GradeGrid does not support yet, so it is left out of the download.
+        </Alert>
+      )}
+
+      {warnedNames.length > 0 && (
+        <Alert tone="warning" title={`Double-check ${warnedNames.length} card${warnedNames.length > 1 ? 's' : ''}`}>
+          {warnedNames.join(', ')}. Some values were unclear or auto-corrected so the marks add up. Details are listed
+          under each file above.
+        </Alert>
+      )}
+    </>
+  );
+
   return (
     <>
+      {cards.length > 0 && (
+        <ClassSheetPanel
+          cards={cards}
+          skippedCount={rows.length - cards.length}
+          customOpen={customOpen}
+          onToggleCustom={() => setCustomOpen((open) => !open)}
+        >
+          {notices}
+        </ClassSheetPanel>
+      )}
+
+      {showCustom && (
+      <div id="custom-export" className="space-y-6">
       <Panel
         headingId="export-heading"
         title="Columns"
         description="Pick the details to keep. Each student becomes one row in the file."
       >
-        {emptyNames.length > 0 && (
-          <Alert title={`No details found in ${emptyNames.length} file${emptyNames.length > 1 ? 's' : ''}`}>
-            {emptyNames.join(', ')}. The file may be blurry or use a layout GradeGrid does not support yet, so it is left out of the download.
-          </Alert>
-        )}
-
-        {warnedNames.length > 0 && (
-          <Alert tone="warning" title={`Double-check ${warnedNames.length} card${warnedNames.length > 1 ? 's' : ''}`}>
-            {warnedNames.join(', ')}. Some values were unclear or auto-corrected so the marks add up. Details are listed
-            under each file above.
-          </Alert>
-        )}
+        {!cards.length && notices}
 
         {rows.length > 0 && (
           <>
@@ -106,6 +132,8 @@ export function ExportPanel() {
             </p>
           )}
         </Panel>
+      )}
+      </div>
       )}
     </>
   );

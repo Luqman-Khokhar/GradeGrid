@@ -40,9 +40,9 @@ export const extractFromPdf = async (buffer) => {
     const text = pages.join('\n');
     if (text.trim()) return { pages: doc.numPages, source: 'text', fields: extractFields(text), warnings: [] };
 
-    const { fields, warnings } = await ocrPage(await doc.getPage(1));
+    const { fields, warnings, card } = await ocrPage(await doc.getPage(1));
     if (doc.numPages > 1) warnings.push(`Only page 1 of ${doc.numPages} was read.`);
-    return { pages: doc.numPages, source: 'ocr', fields, warnings };
+    return { pages: doc.numPages, source: 'ocr', fields, warnings, card };
   } finally {
     await doc.destroy();
   }

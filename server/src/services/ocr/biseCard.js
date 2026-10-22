@@ -68,6 +68,17 @@ export const findFrame = (words, width, height) => {
   };
 };
 
+/** Page-fraction rectangle → pixel rectangle on the frame's canvas. */
+export const rectOn = (frame, x, y, width, height) => {
+  const corner = frame.toPixels(x, y);
+  return {
+    left: Math.round(corner.x),
+    top: Math.round(corner.y),
+    width: Math.round(width * frame.scaleX),
+    height: Math.round(height * frame.scaleY),
+  };
+};
+
 const HEADER_PATTERNS = [
   ['Roll No', /Roll\s*No\.?\s*:?\s*(\d{3,})/i],
   ['Registration No', /Registration\s*No\.?\s*:?\s*(\d[\d-]+\d)/i],
@@ -82,7 +93,7 @@ const HEADER_PATTERNS = [
 export const isBiseCard = (text) =>
   /Intermediate\s*&?\s*Secondary\s*Education/i.test(text) && /Marks\s*Obtained|Percentile/i.test(text);
 
-const cleanText = (value) =>
+export const cleanText = (value) =>
   value
     .replace(/[|_~«»©®]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -99,23 +110,59 @@ export const parseHeader = (text) => {
   });
   if (header.Class) header.Class = fixClass(header.Class);
   if (/has\s+passed/i.test(text)) header.Result = 'Pass';
+  else if (/compartment|supplementary|re-?appear/i.test(text)) header.Result = 'Compartment';
   else if (/\bfail/i.test(text)) header.Result = 'Fail';
   return header;
 };
 
-const median = (values) => {
+// The board's city, from "Board of Intermediate & Secondary Education, Gujranwala".
+const BOARD = /Education[\s\S]{0,20}?\b(Gujranwala|Lahore|Rawalpindi|Faisalabad|Multan|Sargodha|Sahiwal|Bahawalpur|D\.?\s*G\.?\s*Khan|Dera Ghazi Khan)/i;
+
+export const parseBoard = (text) => text.match(BOARD)?.[1].replace(/\s+/g, ' ') ?? '';
+
+/** Header fields in the shape the class-sheet export reads. */
+export const cardHeader = (header, text) => ({
+  rollNo: header['Roll No'] ?? '',
+  name: header.Name ?? '',
+  fatherName: header["Father's Name"] ?? '',
+  className: header.Class ?? '',
+  session: header.Session ?? '',
+  group: header.Group ?? '',
+  board: parseBoard(text),
+  result: header.Result ?? '',
+});
+
+export const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
 };
 
-const cleanCell = (kind, text) => {
+export const cleanCell = (kind, text) => {
   if (kind === 'number') {
     const value = text.replace(/[^0-9.-]/g, '');
     return /^-+$/.test(value) ? '-' : value;
   }
+  if (kind === 'word') return text.toUpperCase().replace(/[^A-Z]/g, '');
   const value = text.toUpperCase().replace(/[^A-Z+-]/g, '');
   return /^-+$/.test(value) ? '-' : value;
 };
+
+/** Group words sorted top to bottom into rows; returns each row's median height on the page. */
+export const clusterRows = (words, cy) => {
+  const rowYs = [];
+  let cluster = [];
+  words.forEach((w) => {
+    if (cluster.length && cy(w) - cy(cluster[cluster.length - 1]) > 0.01) {
+      rowYs.push(median(cluster.map(cy)));
+      cluster = [];
+    }
+    cluster.push(w);
+  });
+  if (cluster.length) rowYs.push(median(cluster.map(cy)));
+  return rowYs;
+};
+
+const FAIL_STATUS = /^(F|A|ABS|FAIL|ABSENT)$/;
 
 const halfWidth = (index) => {
   const gaps = [COLUMNS[index - 1], COLUMNS[index + 1]]
@@ -129,16 +176,7 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
   const center = (word) => frame.toPage((word.x0 + word.x1) / 2, (word.y0 + word.y1) / 2);
   const cx = (word) => center(word).x;
   const cy = (word) => center(word).y;
-  // Page-fraction rectangle → pixel rectangle on this canvas.
-  const toRect = (x, y, width, height) => {
-    const corner = frame.toPixels(x, y);
-    return {
-      left: Math.round(corner.x),
-      top: Math.round(corner.y),
-      width: Math.round(width * frame.scaleX),
-      height: Math.round(height * frame.scaleY),
-    };
-  };
+  const toRect = (x, y, width, height) => rectOn(frame, x, y, width, height);
 
   // Column headings ("Marks Obtained", "Score", "Relative") sit in a band just above the rows.
   const headingYs = words.filter((w) => /^(Obtained|Score|Relative)$/.test(w.text)).map(cy);
@@ -169,16 +207,7 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
         cy(w) < totalY - 0.01,
     )
     .sort((a, b) => cy(a) - cy(b));
-  const rowYs = [];
-  let cluster = [];
-  markers.forEach((w) => {
-    if (cluster.length && cy(w) - cy(cluster[cluster.length - 1]) > 0.01) {
-      rowYs.push(median(cluster.map(cy)));
-      cluster = [];
-    }
-    cluster.push(w);
-  });
-  if (cluster.length) rowYs.push(median(cluster.map(cy)));
+  const rowYs = clusterRows(markers, cy);
 
   if (!rowYs.length) return { fields: [], warnings: ['No subject rows found on this result card.'] };
 
@@ -257,5 +286,20 @@ export const parseBiseCard = async ({ canvas, words, text }) => {
   );
   if (unreadable.length) warnings.push(`Unclear values: ${unreadable.join(', ')}.`);
 
-  return { fields, warnings };
+  const card = {
+    layout: 'parts',
+    ...cardHeader(header, cardText),
+    subjects: checked.map((row) => ({
+      name: row.subject,
+      max: row.values.max,
+      obtained: row.values.total,
+      percentile: row.values.percentile,
+      grade: row.values.grade,
+      status: ['status11', 'status12', 'statusPractical'].some((key) => FAIL_STATUS.test(row.values[key])) ? 'FAIL' : 'PASS',
+    })),
+    totalMax: grand.max ?? '',
+    totalObtained: grand.total ?? '',
+  };
+
+  return { fields, warnings, card };
 };

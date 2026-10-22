@@ -17,6 +17,8 @@ const WHITELISTS = {
   grade: 'ABCDEF+-',
   // P = pass, F = fail, A = absent, - = not applicable; a wider set lets P drift to D.
   status: 'PFA-',
+  // Whole-word statuses on Part-I cards: PASS, FAIL, ABSENT.
+  word: 'ABEFILNPST',
 };
 
 let textWorker = null;
