@@ -81,3 +81,60 @@ export const reconcile = (rows, grand = {}) => {
 
   return { rows: fixed, warnings };
 };
+
+const isAbsent = (value) => /^(A|ABS|ABSENT|-+)$/i.test(value ?? '');
+const toMark = (value) => (isAbsent(value) ? 0 : /^\d+$/.test(value ?? '') ? Number(value) : Number.NaN);
+
+/**
+ * Part-I cards have one marks column per subject, so the only check is that each mark fits
+ * under its max and the marks add up to the card's total. Each row may carry `alt`, a second
+ * reading of the same cell (from the full-page OCR); it replaces a reading that breaks either rule.
+ */
+export const reconcileObtained = (rows, grand = {}) => {
+  const fixed = rows.map((row) => ({ ...row, values: { ...row.values } }));
+  const warnings = [];
+  const fits = (row, value) => {
+    const mark = toMark(value);
+    const max = toMark(row.values.max);
+    return Number.isFinite(mark) && (!max || mark <= max);
+  };
+  const change = (row, value) => {
+    warnings.push(`${row.subject}: read as ${row.values.obtained || 'blank'}, corrected to ${value} so the marks add up.`);
+    row.values.obtained = String(value);
+  };
+
+  fixed.forEach((row) => {
+    if (!fits(row, row.values.obtained) && row.alt && fits(row, row.alt)) change(row, row.alt);
+  });
+
+  const grandTotal = toMark(grand.total);
+  const sum = () => fixed.reduce((acc, row) => acc + toMark(row.values.obtained), 0);
+  if (Number.isFinite(grandTotal) && grandTotal > 0 && sum() !== grandTotal) {
+    const unfit = fixed.filter((row) => !fits(row, row.values.obtained));
+    if (unfit.length === 1) {
+      const [row] = unfit;
+      const value = grandTotal - fixed.filter((other) => other !== row).reduce((acc, other) => acc + toMark(other.values.obtained), 0);
+      if (fits(row, String(value))) change(row, value);
+    } else if (!unfit.length) {
+      const current = sum();
+      const row = fixed.find(
+        (candidate) =>
+          candidate.alt &&
+          candidate.alt !== candidate.values.obtained &&
+          fits(candidate, candidate.alt) &&
+          current - toMark(candidate.values.obtained) + toMark(candidate.alt) === grandTotal,
+      );
+      if (row) change(row, row.alt);
+    }
+    const total = sum();
+    if (total !== grandTotal) {
+      warnings.push(`Subject marks add up to ${Number.isFinite(total) ? total : 'an unreadable value'}, but the card says ${grandTotal}.`);
+    }
+  }
+
+  fixed
+    .filter((row) => !fits(row, row.values.obtained))
+    .forEach((row) => warnings.push(`${row.subject}: marks could not be read. Check this card.`));
+
+  return { rows: fixed, warnings };
+};

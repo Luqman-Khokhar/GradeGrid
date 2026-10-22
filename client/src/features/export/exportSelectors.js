@@ -40,3 +40,10 @@ export const selectColumns = createSelector([selectResults], (results) => {
   });
   return [...columns.values()];
 });
+
+/** Structured cards from recognised BISE marks sheets; these feed the class sheet. */
+export const selectCards = createSelector([selectResults], (results) =>
+  Object.values(results)
+    .filter((result) => result.ok && result.card?.subjects?.length)
+    .map((result) => result.card),
+);

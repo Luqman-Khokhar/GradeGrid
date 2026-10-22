@@ -11,7 +11,8 @@ const userMessage = (err, fileName) => {
   return 'This file could not be read. Check that it is a result card PDF or screenshot.';
 };
 
-// POST /api/results/extract — multipart "files" (PDFs or screenshots). Returns labelled fields per file.
+// POST /api/results/extract — multipart "files" (PDFs or screenshots). Returns labelled fields per file,
+// plus the structured `card` (student, subjects, totals) for recognised BISE marks sheets.
 export const extractResults = async (req, res, next) => {
   try {
     if (!req.files?.length) throw new HttpError(400, 'Upload at least one PDF or image in the "files" field');
@@ -24,8 +25,8 @@ export const extractResults = async (req, res, next) => {
         const type = detectType(file.buffer);
         if (!ACCEPTED_TYPES.has(type)) throw new HttpError(415, 'This file is not a PDF, PNG, JPG or WebP.');
         const extract = type === 'application/pdf' ? extractFromPdf : extractFromImage;
-        const { pages, source, fields, warnings } = await extract(file.buffer);
-        results.push({ fileName: file.originalname, pages, source, fields, warnings, ok: true });
+        const { pages, source, fields, warnings, card } = await extract(file.buffer);
+        results.push({ fileName: file.originalname, pages, source, fields, warnings, card, ok: true });
       } catch (err) {
         results.push({ fileName: file.originalname, ok: false, error: userMessage(err, file.originalname) });
       }

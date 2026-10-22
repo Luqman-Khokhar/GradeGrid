@@ -1,6 +1,7 @@
 import { extractFields } from '../fieldExtractor.js';
 import { layoutLines } from '../textLayout.js';
 import { isBiseCard, parseBiseCard } from './biseCard.js';
+import { isPart1Card, parsePart1Card } from './bisePart1.js';
 import { readText } from './engine.js';
 import { prepareImage, renderPage } from './renderPage.js';
 
@@ -21,7 +22,10 @@ const ocrCanvas = async (canvas) => {
   const split = Math.round(canvas.height * MAIN_PART);
   const main = await readText(canvas, { left: 0, top: 0, width: canvas.width, height: split });
 
-  if (isBiseCard(main.text)) return parseBiseCard({ canvas, words: main.words, text: main.text });
+  if (isBiseCard(main.text)) {
+    const parse = isPart1Card(main.text, main.words) ? parsePart1Card : parseBiseCard;
+    return parse({ canvas, words: main.words, text: main.text });
+  }
 
   const rest = await readText(canvas, { left: 0, top: split, width: canvas.width, height: canvas.height - split });
   return { fields: extractFields(wordsToText([...main.words, ...rest.words])), warnings: [] };
